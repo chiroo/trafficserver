@@ -287,11 +287,14 @@ gzip_transform_one(GzipData * data, TSIOBufferReader upstream_reader, int amount
       data->zstrm.next_out = (unsigned char *) downstream_buffer;
       data->zstrm.avail_out = downstream_length;
 
-      if(!hc->flush())
+      if(!hc->flush()) {
+        debug("deflate with Z_NO_FLUSH");
         err = deflate(&data->zstrm, Z_NO_FLUSH);
-      else
+      } else {
+        debug("deflate with Z_SYNC_FLUSH");
         err = deflate(&data->zstrm, Z_SYNC_FLUSH);
-
+      }
+      
       if (err != Z_OK)
         warning("deflate() call failed: %d", err);
 
