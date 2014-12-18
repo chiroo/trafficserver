@@ -424,9 +424,7 @@ static int
 gzip_transform(TSCont contp, TSEvent event, void *edata)
 {
   TSHttpTxn txnp = (TSHttpTxn) edata;
-  TSMBuffer req_buf;
-  TSMLoc req_loc;
-  HostConfiguration * hc = find_host_configuration(txnp, req_buf, req_loc);
+  HostConfiguration * hc = (HostConfiguration*)TSHttpTxnArgGet(txnp, arg_idx_host_configuration);
   
   if (TSVConnClosedGet(contp)) {
     gzip_data_destroy((GzipData*)TSContDataGet(contp));
