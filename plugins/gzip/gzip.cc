@@ -252,7 +252,7 @@ gzip_transform_init(TSCont contp, GzipData * data)
 
 
 static void
-gzip_transform_one(GzipData * data, TSIOBufferReader upstream_reader, int amount)
+gzip_transform_one(GzipData * data, TSIOBufferReader upstream_reader, int amount, HostConfiguration * hc)
 {
   TSIOBufferBlock downstream_blkp;
   const char *upstream_buffer;
@@ -287,7 +287,10 @@ gzip_transform_one(GzipData * data, TSIOBufferReader upstream_reader, int amount
       data->zstrm.next_out = (unsigned char *) downstream_buffer;
       data->zstrm.avail_out = downstream_length;
 
-      err = deflate(&data->zstrm, Z_NO_FLUSH);
+      if(!hc->flush())
+        err = deflate(&data->zstrm, Z_NO_FLUSH);
+      else
+        err = deflate(&data->zstrm, Z_SYNC_FLUSH);
 
       if (err != Z_OK)
         warning("deflate() call failed: %d", err);
@@ -355,7 +358,7 @@ gzip_transform_finish(GzipData * data)
 
 
 static void
-gzip_transform_do(TSCont contp)
+gzip_transform_do(TSCont contp, HostConfiguration * hc)
 {
   TSVIO upstream_vio;
   GzipData *data;
@@ -392,7 +395,7 @@ gzip_transform_do(TSCont contp)
     }
 
     if (upstream_todo > 0) {
-      gzip_transform_one(data, TSVIOReaderGet(upstream_vio), upstream_todo);
+      gzip_transform_one(data, TSVIOReaderGet(upstream_vio), upstream_todo, hc);
       TSVIONDoneSet(upstream_vio, TSVIONDoneGet(upstream_vio) + upstream_todo);
     }
   }
@@ -418,8 +421,13 @@ gzip_transform_do(TSCont contp)
 
 
 static int
-gzip_transform(TSCont contp, TSEvent event, void * /* edata ATS_UNUSED */)
+gzip_transform(TSCont contp, TSEvent event, void *edata)
 {
+  TSHttpTxn txnp = (TSHttpTxn) edata;
+  TSMBuffer req_buf;
+  TSMLoc req_loc;
+  HostConfiguration * hc = find_host_configuration(txnp, req_buf, req_loc);
+  
   if (TSVConnClosedGet(contp)) {
     gzip_data_destroy((GzipData*)TSContDataGet(contp));
     TSContDestroy(contp);
@@ -436,14 +444,14 @@ gzip_transform(TSCont contp, TSEvent event, void * /* edata ATS_UNUSED */)
       TSVConnShutdown(TSTransformOutputVConnGet(contp), 0, 1);
       break;
     case TS_EVENT_VCONN_WRITE_READY:
-      gzip_transform_do(contp);
+      gzip_transform_do(contp, hc);
       break;
     case TS_EVENT_IMMEDIATE:
-      gzip_transform_do(contp);
+      gzip_transform_do(contp, hc);
       break;
     default:
       warning("unknown event [%d]", event);
-      gzip_transform_do(contp);
+      gzip_transform_do(contp, hc);
       break;
     }
   }
