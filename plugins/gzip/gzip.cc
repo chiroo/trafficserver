@@ -288,10 +288,10 @@ gzip_transform_one(GzipData * data, TSIOBufferReader upstream_reader, int amount
       data->zstrm.avail_out = downstream_length;
 
       if(!hc->flush()) {
-        debug("deflate with Z_NO_FLUSH");
+        debug("gzip_transform: deflate with Z_NO_FLUSH");
         err = deflate(&data->zstrm, Z_NO_FLUSH);
       } else {
-        debug("deflate with Z_SYNC_FLUSH");
+        debug("gzip_transform: deflate with Z_SYNC_FLUSH");
         err = deflate(&data->zstrm, Z_SYNC_FLUSH);
       }
       
