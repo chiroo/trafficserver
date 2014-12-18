@@ -37,7 +37,7 @@ namespace Gzip  {
       , enabled_(true)
       , cache_(true)
       , remove_accept_encoding_(false)
-      , flush_(false)
+      , flush_(true)
     {}
 
     inline bool enabled() { return enabled_; }
