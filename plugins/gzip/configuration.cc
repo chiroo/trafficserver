@@ -250,7 +250,7 @@ namespace Gzip {
           state = kParseStart;
           break;
         case kParseFlush:
-          current_host_configuration->set_flush(token == "false");
+          current_host_configuration->set_flush(token == "true");
           state = kParseStart;
           break;
         }
