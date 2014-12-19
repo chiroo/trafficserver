@@ -427,7 +427,7 @@ gzip_transform_do(TSCont contp)
 
 
 static int
-gzip_transform(TSCont contp, TSEvent event, void *edata)
+gzip_transform(TSCont contp, TSEvent event, void * /* edata ATS_UNUSED */)
 {
   
   if (TSVConnClosedGet(contp)) {
