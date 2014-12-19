@@ -252,13 +252,16 @@ gzip_transform_init(TSCont contp, GzipData * data)
 
 
 static void
-gzip_transform_one(GzipData * data, TSIOBufferReader upstream_reader, int amount, HostConfiguration * hc)
+gzip_transform_one(GzipData * data, TSIOBufferReader upstream_reader, int amount)
 {
   TSIOBufferBlock downstream_blkp;
   const char *upstream_buffer;
   char *downstream_buffer;
   int64_t upstream_length, downstream_length;
   int err;
+  
+  TSHttpTxn txnp = (TSHttpTxn) data->txn;
+  HostConfiguration * hc = (HostConfiguration*)TSHttpTxnArgGet(txnp, arg_idx_host_configuration);
 
   while (amount > 0) {
     downstream_blkp = TSIOBufferReaderStart(upstream_reader);
@@ -361,7 +364,7 @@ gzip_transform_finish(GzipData * data)
 
 
 static void
-gzip_transform_do(TSCont contp, HostConfiguration * hc)
+gzip_transform_do(TSCont contp)
 {
   TSVIO upstream_vio;
   GzipData *data;
@@ -398,7 +401,7 @@ gzip_transform_do(TSCont contp, HostConfiguration * hc)
     }
 
     if (upstream_todo > 0) {
-      gzip_transform_one(data, TSVIOReaderGet(upstream_vio), upstream_todo, hc);
+      gzip_transform_one(data, TSVIOReaderGet(upstream_vio), upstream_todo);
       TSVIONDoneSet(upstream_vio, TSVIONDoneGet(upstream_vio) + upstream_todo);
     }
   }
@@ -426,8 +429,6 @@ gzip_transform_do(TSCont contp, HostConfiguration * hc)
 static int
 gzip_transform(TSCont contp, TSEvent event, void *edata)
 {
-  TSHttpTxn txnp = (TSHttpTxn) edata;
-  HostConfiguration * hc = (HostConfiguration*)TSHttpTxnArgGet(txnp, arg_idx_host_configuration);
   
   if (TSVConnClosedGet(contp)) {
     gzip_data_destroy((GzipData*)TSContDataGet(contp));
@@ -445,14 +446,14 @@ gzip_transform(TSCont contp, TSEvent event, void *edata)
       TSVConnShutdown(TSTransformOutputVConnGet(contp), 0, 1);
       break;
     case TS_EVENT_VCONN_WRITE_READY:
-      gzip_transform_do(contp, hc);
+      gzip_transform_do(contp);
       break;
     case TS_EVENT_IMMEDIATE:
-      gzip_transform_do(contp, hc);
+      gzip_transform_do(contp);
       break;
     default:
       warning("unknown event [%d]", event);
-      gzip_transform_do(contp, hc);
+      gzip_transform_do(contp);
       break;
     }
   }
